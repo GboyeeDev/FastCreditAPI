@@ -30,22 +30,31 @@ jobs:
       - name: Zip Artifacts
         run: zip -r app.zip ./publish
 
-      - name: Upload to S3
-        uses: aws-actions/upload-to-s3@v1
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          path: ./app.zip
-          bucket: ${{ secrets.AWS_ARTIFACT_BUCKET }}
-          key: app-${{ github.sha }}.zip
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Upload to S3
+        run: |
+          aws s3 cp app.zip s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/app-${{ github.sha }}.zip
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy to EC2
-        uses: aws-actions/code-deploy@v1
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          application-name: dotnet-app
-          deployment-group: dotnet-app-dg
-          bucket: ${{ secrets.AWS_ARTIFACT_BUCKET }}
-          key: app-${{ github.sha }}.zip
-          bundle-type: zip
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy to EC2
+        run: |
+          aws deploy create-deployment \
+            --application-name dotnet-app \
+            --deployment-group-name dotnet-app-dg \
+            --s3-location bucket=${{ secrets.AWS_ARTIFACT_BUCKET }},key=app-${{ github.sha }}.zip,bundleType=zip
