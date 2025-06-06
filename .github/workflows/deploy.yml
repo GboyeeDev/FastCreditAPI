@@ -1,0 +1,51 @@
+name: .NET CI/CD to AWS
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '6.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --no-build --verbosity normal
+
+      - name: Publish
+        run: dotnet publish -c Release -o ./publish
+
+      - name: Zip Artifacts
+        run: zip -r app.zip ./publish
+
+      - name: Upload to S3
+        uses: aws-actions/upload-to-s3@v1
+        with:
+          path: ./app.zip
+          bucket: ${{ secrets.AWS_ARTIFACT_BUCKET }}
+          key: app-${{ github.sha }}.zip
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to EC2
+        uses: aws-actions/code-deploy@v1
+        with:
+          application-name: dotnet-app
+          deployment-group: dotnet-app-dg
+          bucket: ${{ secrets.AWS_ARTIFACT_BUCKET }}
+          key: app-${{ github.sha }}.zip
+          bundle-type: zip
