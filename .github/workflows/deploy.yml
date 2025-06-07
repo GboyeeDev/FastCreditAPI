@@ -60,7 +60,12 @@ jobs:
             --s3-location bucket=${{ secrets.AWS_ARTIFACT_BUCKET }},key=app-${{ github.sha }}.zip,bundleType=zip
       - name: Zip Artifacts
         run: |
-            # Move appspec.yml to root of zip
-            cp appspec.yml ./publish/
-            cp -r scripts ./publish/
-            cd ./publish && zip -r ../app.zip .  
+            # Navigate to project root
+            cd Documents/FastCreditAPI
+            
+            # Verify critical files exist
+            ls -la
+            ls -la scripts/
+            
+            # Create zip from project root
+            zip -r ../app.zip .
